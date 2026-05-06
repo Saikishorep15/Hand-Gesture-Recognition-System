@@ -1,5 +1,10 @@
 import streamlit as st
-import cv2
+
+try:
+    import cv2
+except:
+    cv2 = None
+
 from mediapipe.python.solutions import hands as mp_hands
 from mediapipe.python.solutions import drawing_utils as mp_draw
 import numpy as np
@@ -76,6 +81,14 @@ Professional ML-based real-time gesture recognition using OpenCV, MediaPipe & St
 """, unsafe_allow_html=True)
 
 # --------------------------------
+# CLOUD WARNING
+# --------------------------------
+if cv2 is None:
+    st.warning(
+        "Live camera features are limited on Streamlit Cloud deployment."
+    )
+
+# --------------------------------
 # LOAD MODEL
 # --------------------------------
 model = joblib.load("gesture_model.pkl")
@@ -118,21 +131,22 @@ gesture_names = {
 # --------------------------------
 # MEDIAPIPE
 # --------------------------------
-mp_draw = mp.solutions.drawing_utils
+if cv2 is not None:
 
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=2,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-)
-
-mp_draw = mp.solutions.drawing_utils
+    hands = mp_hands.Hands(
+        static_image_mode=False,
+        max_num_hands=2,
+        min_detection_confidence=0.7,
+        min_tracking_confidence=0.7
+    )
 
 # --------------------------------
 # FRAME PROCESS FUNCTION
 # --------------------------------
 def process_frame(frame):
+
+    if cv2 is None:
+        return frame, "OpenCV Not Available"
 
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -225,76 +239,92 @@ with col1:
 
     if app_mode == "Live Camera":
 
-        run = st.checkbox("Start Camera")
+        if cv2 is None:
 
-        FRAME_WINDOW = st.image([])
+            st.warning(
+                "Live Camera works best in local VS Code environment."
+            )
 
-        if run:
+        else:
 
-            camera = cv2.VideoCapture(0)
+            run = st.checkbox("Start Camera")
 
-            while run:
+            FRAME_WINDOW = st.image([])
 
-                success, frame = camera.read()
+            if run:
 
-                if not success:
-                    st.error("Camera not detected")
-                    break
+                camera = cv2.VideoCapture(0)
 
-                frame = cv2.flip(frame, 1)
+                while run:
 
-                processed_frame, gesture = process_frame(frame)
+                    success, frame = camera.read()
 
-                FRAME_WINDOW.image(
-                    cv2.cvtColor(
-                        processed_frame,
-                        cv2.COLOR_BGR2RGB
+                    if not success:
+                        st.error("Camera not detected")
+                        break
+
+                    frame = cv2.flip(frame, 1)
+
+                    processed_frame, gesture = process_frame(frame)
+
+                    FRAME_WINDOW.image(
+                        cv2.cvtColor(
+                            processed_frame,
+                            cv2.COLOR_BGR2RGB
+                        )
                     )
-                )
 
-            camera.release()
+                camera.release()
 
 # --------------------------------
 # VIDEO UPLOAD MODE
 # --------------------------------
     elif app_mode == "Upload Video":
 
-        uploaded_file = st.file_uploader(
-            "Upload Video",
-            type=["mp4", "mov", "avi"]
-        )
+        if cv2 is None:
 
-        if uploaded_file is not None:
+            st.warning(
+                "Video processing is limited in cloud deployment."
+            )
 
-            tfile = tempfile.NamedTemporaryFile(delete=False)
+        else:
 
-            tfile.write(uploaded_file.read())
+            uploaded_file = st.file_uploader(
+                "Upload Video",
+                type=["mp4", "mov", "avi"]
+            )
 
-            cap = cv2.VideoCapture(tfile.name)
+            if uploaded_file is not None:
 
-            FRAME_WINDOW = st.image([])
+                tfile = tempfile.NamedTemporaryFile(delete=False)
 
-            st.info("Processing Video...")
+                tfile.write(uploaded_file.read())
 
-            while cap.isOpened():
+                cap = cv2.VideoCapture(tfile.name)
 
-                ret, frame = cap.read()
+                FRAME_WINDOW = st.image([])
 
-                if not ret:
-                    break
+                st.info("Processing Video...")
 
-                processed_frame, gesture = process_frame(frame)
+                while cap.isOpened():
 
-                FRAME_WINDOW.image(
-                    cv2.cvtColor(
-                        processed_frame,
-                        cv2.COLOR_BGR2RGB
+                    ret, frame = cap.read()
+
+                    if not ret:
+                        break
+
+                    processed_frame, gesture = process_frame(frame)
+
+                    FRAME_WINDOW.image(
+                        cv2.cvtColor(
+                            processed_frame,
+                            cv2.COLOR_BGR2RGB
+                        )
                     )
-                )
 
-            cap.release()
+                cap.release()
 
-            st.success("Video Processing Completed")
+                st.success("Video Processing Completed")
 
 # --------------------------------
 # FOOTER
