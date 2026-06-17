@@ -16,7 +16,8 @@ from datetime import datetime
 # --------------------------------
 # PAGE CONFIG
 # --------------------------------
-st.set_page_config(page_title="Hand Gesture Recognition",
+st.set_page_config(
+    page_title="Hand Gesture Recognition",
     page_icon="🖐",
     layout="wide"
 )
